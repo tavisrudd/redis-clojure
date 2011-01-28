@@ -24,7 +24,6 @@
      (try
        ~@body
        (catch Exception e#
-         (release-connection ~pool ~name e#)
          (throw e#))
        (finally
         (release-connection ~pool ~name)))))
