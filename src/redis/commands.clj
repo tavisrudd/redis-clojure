@@ -83,16 +83,16 @@
   (zincrby     [key increment member] string-to-double)
   (zrank       [key member])
   (zrevrank    [key member])
-  (zrange      [key start end])
-  (zrevrange   [key start end])
-  (zrangebyscore [key start end])
+  (zrange      [key start end & options])
+  (zrevrange   [key start end & options])
+  (zrangebyscore [key start end & options])
+  (zrevrangebyscore [key start end & options])
   (zremrangebyrank [key start end])
   (zremrangebyscore [key start end])
   (zcard       [key])
   (zscore      [key member] string-to-double)
-  ; TODO:
-  ; zunionstore
-  ; zinterstore
+  (zunionstore [destkey numkeys key & other-keys-and-options])
+  (zinterstore [destkey numkeys key & other-keys-and-options])
   ; Hash commands
   (hset        [key field val])
   (hget        [key field])
