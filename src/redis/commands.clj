@@ -90,6 +90,7 @@
   (zremrangebyrank [key start end])
   (zremrangebyscore [key start end])
   (zcard       [key])
+  (zcount      [key min max])
   (zscore      [key member] string-to-double)
   (zunionstore [destkey numkeys key & other-keys-and-options])
   (zinterstore [destkey numkeys key & other-keys-and-options])
