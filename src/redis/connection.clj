@@ -1,5 +1,5 @@
 (ns redis.connection
-  (:use [redis.protocol :only (write-to-buffer write-to-stream)])
+  (:use [redis.protocol :only (write-to-buffer write-to-stream make-inline-command)])
   (:import [java.net Socket]
            [java.io BufferedInputStream ByteArrayOutputStream]))
 
@@ -12,6 +12,7 @@
 
 (defprotocol RedisConnection
   (get-server-spec [connection])
+  (connected? [connection])
   (close [connection])
   (input-stream [connection])
   (output-stream [connection]))
@@ -30,13 +31,6 @@
 
 
 ;;; Implementations
-(defrecord Connection [#^Socket socket server-spec]
-  RedisConnection
-  (get-server-spec [this] server-spec)
-  (close [this] (.close socket))
-  (input-stream [this] (BufferedInputStream. (.getInputStream socket)))
-  (output-stream [this] (.getOutputStream socket)))
-
 (defn send-command-and-read-reply
   [connection command]
   (let [buf (ByteArrayOutputStream.)
@@ -46,12 +40,25 @@
     (write-to-stream buf out)
     (redis.protocol/read-reply in)))
 
+(defn connection-alive? [connection]
+  "Determines whether the connection is still alive"
+  (let [ping (make-inline-command "PING")
+        resp (send-command-and-read-reply connection ping)]
+    (= resp "PONG")))
+
+(defrecord Connection [#^Socket socket server-spec]
+  RedisConnection
+  (get-server-spec [this] server-spec)
+  (connected? [this] (connection-alive? this))
+  (close [this] (.close socket))
+  (input-stream [this] (BufferedInputStream. (.getInputStream socket)))
+  (output-stream [this] (.getOutputStream socket)))
+
 (def default-connection-spec {:host "127.0.0.1"
                               :port 6379
                               :timeout 5000
                               :password nil
                               :db 0})
-
 
 (defn make-connection [server-spec]
   (let [spec (merge default-connection-spec server-spec)
