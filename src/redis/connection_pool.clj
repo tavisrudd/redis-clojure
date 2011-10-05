@@ -1,5 +1,7 @@
 (ns redis.connection-pool
-  (:use [redis.connection :only (RedisConnectionPool make-connection close get-server-spec)])
+  (:use [redis.connection :only (RedisConnectionPool make-connection close get-server-spec)]
+        [redis.channel :only (send! make-direct-channel)]
+        [redis.protocol :only (make-inline-command)])
   (:import [org.apache.commons.pool.impl GenericKeyedObjectPool]
            [org.apache.commons.pool KeyedPoolableObjectFactory]))
 
@@ -16,11 +18,17 @@
     (let [server-spec (get-server-spec connection)]                  
       (.invalidateObject object-pool server-spec connection))))
 
+(defn- validate-connection [connection]
+  (let [channel (make-direct-channel connection)
+        resp (send! channel (make-inline-command "PING"))]
+    (= resp "PONG")))
+
 (defn- make-connection-factory []
   (reify KeyedPoolableObjectFactory
     (makeObject [this key] (make-connection key))
     (activateObject [this key obj])
-    (validateObject [this key obj] true) ; TODO: PING? IsConnected?
+    (validateObject [this key obj]
+                    (validate-connection obj))
     (passivateObject [this key obj])
     (destroyObject [this key obj] (close obj))))
 
