@@ -2,7 +2,7 @@
   (:use [clojure.test])
   (:use [redis.core :only (with-server)]
         [redis.pipeline :only (pipeline)])
-  (:require [redis.commands :as redis]))
+  (:require [redis.core :as redis]))
 
 (defn server-fixture [f]
   (with-server {:host "127.0.0.1"

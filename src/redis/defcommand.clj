@@ -1,6 +1,6 @@
 (ns redis.defcommand
   (:use [clojure.string :only (upper-case)])
-  (:use [redis.core :only (*channel*)]
+  (:use [redis.vars :only (*channel*)]
         [redis.protocol :only (make-inline-command make-multi-bulk-command)]
         [redis.channel :only (send!)]))
 
@@ -29,13 +29,15 @@
                         (map #(when (not (nil? %1))
                                 (%1 %2)) key-fns args)))))
 
-(def *default-opts* {:type        :multi-bulk
-                     :reply-fn    identity
-                     :key-fn      get-key-fns
-                     :redis-shard :one})
+(def ^:dynamic
+  *default-opts* {:type        :multi-bulk
+                  :reply-fn    identity
+                  :key-fn      get-key-fns
+                  :redis-shard :one})
 
-(def *command-types* {:inline make-inline-command
-                      :multi-bulk make-multi-bulk-command})
+(def ^:dynamic
+  *command-types* {:inline make-inline-command
+                   :multi-bulk make-multi-bulk-command})
 
 
 (defn parse-opts+body [opts+body]

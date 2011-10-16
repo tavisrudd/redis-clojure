@@ -20,9 +20,9 @@
 ;;; Reply parsing
 ;;;
 
-(def #^String *string-charset* "UTF-8")
+(def #^String ^:dynamic *string-charset* "UTF-8")
 
-(def #^Boolean *return-byte-arrays?* false)
+(def #^Boolean ^:dynamic *return-byte-arrays?* false)
 
 (def CR (byte 0x0d))
 (def LF (byte 0x0a))
