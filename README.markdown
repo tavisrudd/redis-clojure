@@ -1,20 +1,29 @@
 # redis-clojure
 
-A Clojure client library for the
-[Redis](http://code.google.com/p/redis) key value (and more!) storage system.
+This is work in progress for a new version of redis-clojure targeting Clojure 1.2.
 
-## Dependencies
+New/fixed in this version is:
 
-redis-clojure uses
-[Leiningen](http://github.com/technomancy/leiningen) as build tool
+* Connection pooling
+* Binary-safe strings (using multi bulk commands)
+* Better performance
+* Support for pipelining using the `pipeline` macro
+
+Planned features:
+
+* Sharding
+
+redis-clojure is a Clojure client library for the
+[Redis](http://code.google.com/p/redis) key value (and more!) storage
+system.
+
+The goal of redis-clojure is to provide a low level interface to all
+Redis commands in a Clojure idiomatic way, when possible.
 
 ## Building 
 
-To build redis-clojure:
-
-    lein jar
-
-This will build redis-clojure and package it nicely into `redis-clojure.jar`.
+This version of redis-clojure uses
+[Leiningen](http://github.com/technomancy/leiningen) as build tool.
 
 ## Running tests
 
@@ -22,17 +31,5 @@ To run tests:
 
     lein test
 
-*Note* you need to have `redis-server` running first.
-
-## Examples
-
-Check the `examples/` directory.
-
-*Note* you need to have `redis-server` running first.
-
-## Todo
-
-* Work on performance
-* Maybe implement pipelining
-* Look at consistent hashing
+*Note* you need to have `redis-server` running on `localhost` at port `6379`.
 

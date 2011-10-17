@@ -1,8 +1,7 @@
-(ns redis.tests
-  (:refer-clojure :exclude [get set keys type sort])
-  (:require redis)
+(ns redis.command-tests
+  (:refer-clojure :exclude [keys type get set sort])
+  (:require [redis.core :as redis])
   (:use [clojure.test]))
-
 
 (defn server-fixture [f]
   (redis/with-server
@@ -25,12 +24,100 @@
    (redis/hset "hash" "three" "baz")
    (f)
    (redis/flushdb)))
-                     
+
 (use-fixtures :each server-fixture)
 
 (deftest ping
   (is (= "PONG" (redis/ping))))
 
+(deftest exists
+  (is (= true (redis/exists "foo")))
+  (is (= false (redis/exists "nonexistent"))))
+
+(deftest del
+  (is (= 0 (redis/del "nonexistent")))
+  (is (= 1 (redis/del "foo")))
+  (is (= nil  (redis/get "foo")))
+  (redis/mset "one" "1" "two" "2" "three" "3")
+  (is (= 3 (redis/del "one" "two" "three"))))
+
+(deftest type
+  (is (= :none (redis/type "nonexistent")))
+  (is (= :string (redis/type "foo")))
+  (is (= :list (redis/type "list")))
+  (is (= :set (redis/type "set"))))
+
+(deftest keys
+  (is (= [] (redis/keys "a*")))
+  (is (= ["foo"] (redis/keys "f*")))
+  (is (= ["foo"] (redis/keys "f?o")))
+  (redis/set "fuu" "baz")
+  (is (= #{"foo" "fuu"} (clojure.core/set (redis/keys "f*")))))
+
+(deftest randomkey
+  (redis/flushdb)
+  (redis/set "foo" "bar")
+  (is (= "foo" (redis/randomkey)))
+  (redis/flushdb)
+  (is (nil? (redis/randomkey))))
+
+(deftest rename
+  (is (thrown? Exception (redis/rename "foo" "foo")))
+  (is (thrown? Exception (redis/rename "nonexistent" "foo")))
+  (redis/rename "foo" "bar")
+  (is (= "bar" (redis/get "bar")))
+  (is (= nil (redis/get "foo")))
+  (redis/set "foo" "bar")
+  (redis/set "bar" "baz")
+  (redis/rename "foo" "bar")
+  (is (= "bar" (redis/get "bar")))
+  (is (= nil (redis/get "foo"))))
+
+(deftest renamenx
+  (is (thrown? Exception (redis/renamenx "foo" "foo")))
+  (is (thrown? Exception (redis/renamenx "nonexistent" "foo")))
+  (is (= true (redis/renamenx "foo" "bar")))
+  (is (= "bar" (redis/get "bar")))
+  (is (= nil (redis/get "foo")))
+  (redis/set "foo" "bar")
+  (redis/set "bar" "baz")
+  (is (= false (redis/renamenx "foo" "bar"))))
+
+(deftest dbsize
+  (let [size-before (redis/dbsize)]
+    (redis/set "anewkey" "value")
+    (let [size-after (redis/dbsize)]
+      (is (= size-after
+             (+ 1 size-before))))))
+
+(deftest expire
+  (is (= true (redis/expire "foo" 1)))
+  (Thread/sleep 2000)
+  (is (= false (redis/exists "foo")))
+  (redis/set "foo" "bar")
+  (is (= true (redis/expire "foo" 20)))
+  ;@@TR: this test makes no sense to me!
+  ;; (is (= false (redis/expire "foo" 10)))
+  (is (= false (redis/expire "nonexistent" 42))))
+
+(deftest ttl
+  (is (= -1 (redis/ttl "nonexistent")))
+  (is (= -1 (redis/ttl "foo")))
+  (redis/expire "foo" 42)
+  (is (< 40 (redis/ttl "foo"))))
+
+(deftest select
+  (redis/select 0)
+  (is (= nil (redis/get "akeythat_probably_doesnotexsistindb0"))))
+
+(deftest flushdb
+  (redis/flushdb)
+  (is (= 0 (redis/dbsize))))
+
+
+;;
+;; String commands
+;; 
 (deftest set
   (redis/set "bar" "foo")
   (is (= "foo" (redis/get "bar")))
@@ -77,98 +164,40 @@
   (is (= "bar" (redis/get "foo"))))
 
 (deftest incr
-  (is (= 1 (redis/incr "incr")))
-  (is (= 2 (redis/incr "incr")))
-  (is (thrown? Exception (redis/incr "foo"))))
+  (is (= 1 (redis/incr "nonexistent")))
+  (is (thrown? Exception (redis/incr "foo")))
+  (is (= 1 (redis/incr "counter")))
+  (is (= 2 (redis/incr "counter"))))
 
 (deftest incrby
-  (is (= 42 (redis/incrby "incrby" 42)))
-  (is (= 50 (redis/incrby "incrby" 8)))
-  (is (thrown? Exception (redis/incrby "foo" 5))))
+  (is (= 42 (redis/incrby "nonexistent" 42)))
+  (is (thrown? Exception (redis/incrby "foo" 42)))
+  (is (= 0 (redis/incrby "counter" 0)))
+  (is (= 42 (redis/incrby "counter" 42))))
 
 (deftest decr
-  (is (= -1 (redis/decr "decr")))
-  (is (= -2 (redis/decr "decr")))
-  (is (thrown? Exception (redis/decr "foo"))))
+  (is (= -1 (redis/decr "nonexistent")))
+  (is (thrown? Exception (redis/decr "foo")))
+  (is (= -1 (redis/decr "counter")))
+  (is (= -2 (redis/decr "counter"))))
 
 (deftest decrby
-  (is (= -42 (redis/decrby "decrby" 42)))
-  (is (= -50 (redis/decrby "decrby" 8)))
-  (is (thrown? Exception (redis/decrby "foo" 5))))
+  (is (= -42 (redis/decrby "nonexistent" 42)))
+  (is (thrown? Exception (redis/decrby "foo" 0)))
+  (is (= 0 (redis/decrby "counter" 0)))
+  (is (= -42 (redis/decrby "counter" 42))))
 
-(deftest exists
-  (is (= true (redis/exists "foo")))
-  (is (= false (redis/exists "nonexistent"))))
+(deftest append
+  (is (= 5 (redis/append "string" "Hello")))
+  (is (= 11 (redis/append "string" " World")))
+  (is (= "Hello World" (redis/get "string"))))
 
-(deftest del
-  (is (= false (redis/del "nonexistent")))
-  (is (= true (redis/del "foo")))
-  (is (= nil  (redis/get "foo"))))
-
-(deftest type
-  (is (= :none (redis/type "nonexistent")))
-  (is (= :string (redis/type "foo")))
-  (is (= :list (redis/type "list")))
-  (is (= :set (redis/type "set"))))
-
-(deftest keys
-  (is (= [] (redis/keys "a*")))
-  (is (= ["foo"] (redis/keys "f*")))
-  (is (= ["foo"] (redis/keys "f?o")))
-  (redis/set "fuu" "baz")
-  (is (= #{"foo" "fuu"} (clojure.core/set (redis/keys "f*")))))
-
-(deftest randomkey
-  (redis/flushdb)
-  (redis/set "foo" "bar")
-  (is (= "foo" (redis/randomkey)))
-  (redis/flushdb)
-  (is (= nil (redis/randomkey))))
-
-(deftest rename
-  (is (thrown? Exception (redis/rename "foo" "foo")))
-  (is (thrown? Exception (redis/rename "nonexistent" "foo")))
-  (redis/rename "foo" "bar")
-  (is (= "bar" (redis/get "bar")))
-  (is (= nil (redis/get "foo")))
-  (redis/set "foo" "bar")
-  (redis/set "bar" "baz")
-  (redis/rename "foo" "bar")
-  (is (= "bar" (redis/get "bar")))
-  (is (= nil (redis/get "foo"))))
-
-(deftest renamenx
-  (is (thrown? Exception (redis/renamenx "foo" "foo")))
-  (is (thrown? Exception (redis/renamenx "nonexistent" "foo")))
-  (is (= true (redis/renamenx "foo" "bar")))
-  (is (= "bar" (redis/get "bar")))
-  (is (= nil (redis/get "foo")))
-  (redis/set "foo" "bar")
-  (redis/set "bar" "baz")
-  (is (= false (redis/renamenx "foo" "bar"))))
-
-(deftest dbsize
-  (let [size-before (redis/dbsize)]
-    (redis/set "anewkey" "value")
-    (let [size-after (redis/dbsize)]
-      (is (= size-after
-             (+ 1 size-before))))))
-
-(deftest expire
-  (is (= true (redis/expire "foo" 1)))
-  (Thread/sleep 2000)
-  (is (= false (redis/exists "foo")))
-  (redis/set "foo" "bar")
-  (is (= true (redis/expire "foo" 20)))
-  (is (= false (redis/expire "foo" 10)))
-  (is (= false (redis/expire "nonexistent" 42))))
-
-(deftest ttl
-  (is (= -1 (redis/ttl "nonexistent")))
-  (is (= -1 (redis/ttl "foo")))
-  (redis/expire "foo" 42)
-  (is (< 40 (redis/ttl "foo"))))
-
+(deftest substr
+  (redis/set "s" "This is a string")
+  (is (= "This" (redis/substr "s" 0 3)))
+  (is (= "ing" (redis/substr "s" -3 -1)))
+  (is (= "This is a string" (redis/substr "s" 0 -1)))
+  (is (= " string" (redis/substr "s" 9 100000))))
 
 ;;
 ;; List commands
@@ -237,7 +266,6 @@
   (is (= 1 (redis/lrem "list" 42 "three")))
   (is (= 1 (redis/llen "list"))))
 
-
 (deftest lpop
   (is (thrown? Exception (redis/lpop "foo")))
   (is (= nil (redis/lpop "newlist")))
@@ -249,6 +277,20 @@
   (is (= nil (redis/rpop "newlist")))
   (is (= "three" (redis/rpop "list")))
   (is (= 2 (redis/llen "list"))))
+
+(deftest blpop)
+
+(deftest brpop)
+
+(deftest rpoplpush
+  (redis/rpush "src" "a")
+  (redis/rpush "src" "b")
+  (redis/rpush "src" "c")
+  (redis/rpush "dest" "foo")
+  (redis/rpush "dest" "bar")
+  (is (= "c" (redis/rpoplpush "src" "dest")))
+  (is (= ["a" "b"] (redis/lrange "src" 0 -1)))
+  (is (= ["c" "foo" "bar" (redis/lrange "dest" 0 -1)])))
 
 ;;
 ;; Set commands
@@ -346,6 +388,9 @@
   (is (thrown? Exception (redis/smembers "foo")))
   (is (= #{"one" "two" "three"} (redis/smembers "set"))))
 
+(deftest srandmember
+  (is (contains? #{"one" "two" "three"} (redis/srandmember "set"))))
+
 ;;
 ;; ZSet commands
 ;;
@@ -371,16 +416,13 @@
   (is (= 42.141593) (redis/zincrby "zset" 42.00001 "value"))
   (is (= 3.141592) (redis/zincrby "zset" -42.00001 "value")))
 
-(deftest zscore
-  (is (thrown? Exception (redis/zscore "foo")))
-  (redis/zadd "zset" 3.141592 "pi")
-  (is (= 3.141592 (redis/zscore "zset" "pi")))
-  (redis/zadd "zset" -42 "neg")
-  (is (= -42 (redis/zscore "zset" "neg"))))
+(deftest zrank)
+
+(deftest zrevrank)
 
 (deftest zrange
   (is (thrown? Exception (redis/zrange "foo")))
-  (is (=  [] (redis/zrange "zset" 0 99)))
+  (is (= [] (redis/zrange "zset" 0 99)))
   (redis/zadd "zset" 12349809.23873948579348750 "one")
   (redis/zadd "zset" -42 "two")
   (redis/zadd "zset" 3.141592 "three")
@@ -408,6 +450,8 @@
   (is (= ["two"] (redis/zrangebyscore "zset" 1.1 2.9)))
   (is (= ["two" "three"] (redis/zrangebyscore "zset" 1.0000001 3.00001))))
 
+(deftest zremrangebyrank)
+
 (deftest zremrangebyscore
   (is (thrown? Exception (redis/zremrangebyscore "foo")))
   (is (= 0 (redis/zremrangebyscore "zset" 0 42.4)))
@@ -422,6 +466,14 @@
   (redis/zadd "zset" 1.0 "one")
   (is (= 1 (redis/zcard "zset"))))
 
+(deftest zscore
+  (is (thrown? Exception (redis/zscore "foo")))
+  (redis/zadd "zset" 3.141592 "pi")
+  (is (= 3.141592 (redis/zscore "zset" "pi")))
+  (redis/zadd "zset" -42 "neg")
+  (is (= -42.0 (redis/zscore "zset" "neg"))))
+
+
 ;;
 ;; Hash commands
 ;;
@@ -434,11 +486,17 @@
   (is (= nil (redis/hget "bar" "baz")))
   (is (= "bar" (redis/hget "hash" "two"))))
 
-(deftest hset
+(deftest hsetnx)
+
+(deftest hmset
   (is (thrown? Exception (redis/hmset "key1" "field1"))) 
   (is (thrown? Exception (redis/hmset "key" "field" "value" "feild1")))
   (redis/hmset "key1" "field1" "value1" "field2" "value2" "field3" "value3")
   (is (= ["value1" "value2" "value3"] (redis/hvals "key1"))))
+
+(deftest hmget
+  (is (= ["foo"] (redis/hmget "hash" "one")))
+  (is (= ["bar" "baz"] (redis/hmget "hash" "two" "three"))))
 
 (deftest hincrby
   (is (= 42 (redis/hincrby "non-exist-key" "non-exist-field" 42)))
@@ -473,13 +531,18 @@
   (is (= ["foo" "baz"] (redis/hvals "hash"))))
 
 (deftest hgetall
-  (is (=  (redis/hgetall "noexistent")))
-  (is (= ["one" "foo" "two" "bar" "three" "baz"] (redis/hgetall "hash")))
+  (is (= {} (redis/hgetall "noexistent")))
+  (is (= {"one" "foo"
+          "two" "bar"
+          "three" "baz"}
+         (redis/hgetall "hash")))
   (redis/hdel "hash" "one")
-  (is (= {"two" "bar", "three" "baz"} (apply hash-map (redis/hgetall "hash")))))
+  (is (= {"two" "bar"
+          "three" "baz"}
+         (redis/hgetall "hash"))))
 
 ;;
-;; MULTI/EXEC/DISCARD
+;; Redis Transactions: MULTI/EXEC/DISCARD/WATCH/UNWATCH
 ;;
 (deftest multi-exec
   (redis/set "key" "value")
@@ -512,6 +575,8 @@
                 (throw (Exception. "Fail"))
                 (redis/set "key2" "blahong"))))
   (is (= "value" (redis/get "key"))))
+
+;; No tests for WATCH/UNWATCH yet. Waiting for stable Redis 2.1 release.
 
 ;;
 ;; Sorting
@@ -549,36 +614,41 @@
   (is (= ["one" "two" "three" "four"]
          (redis/sort "ids" :get "object_*")))
   (is (= ["one" "two"]
-         (redis/sort "ids" :by "name_*" :alpha :limit 0 2 :desc :get "object_*")))
-  (redis/sort "ids" :by "name_*" :alpha :limit 0 2 :desc :get "object_*" :store "result")
+           (redis/sort "ids"
+                       :by "name_*"
+                       :alpha
+                       :limit 0 2
+                       :desc
+                       :get "object_*")))
+  (redis/sort "ids"
+              :by "name_*"
+              :alpha
+              :limit 0 2
+              :desc
+              :get "object_*"
+              :store "result")
   (is (= ["one" "two"] (redis/lrange "result" 0 -1))))
 
 
 
-;;
-;; Multiple database handling commands
-;;
-(deftest select
-  (redis/select 0)
-  (is (= nil (redis/get "akeythat_probably_doesnotexsistindb0"))))
 
-(deftest flushdb
-  (redis/flushdb)
-  (is (= 0 (redis/dbsize))))
 
-;;
-;; Persistence commands
-;;
-(deftest save
-  (redis/save))
+;; ;;
+;; ;; Persistence commands
+;; ;;
+;; (deftest save
+;;   (redis/save))
 
-(deftest bgsave
-  (redis/bgsave))
+;; (deftest bgsave
+;;   (redis/bgsave))
 
-(deftest bgrewriteaof
-  (redis/bgrewriteaof))
+;; (deftest bgrewriteaof
+;;   (redis/bgrewriteaof))
 
-(deftest lastsave
-  (let [ages-ago (new java.util.Date (long 1))]
-    (is (.before ages-ago (redis/lastsave)))))
+;; (deftest lastsave
+;;   (let [ages-ago (new java.util.Date (long 1))]
+;;     (is (.before ages-ago (redis/lastsave)))))
+
+
+
 
