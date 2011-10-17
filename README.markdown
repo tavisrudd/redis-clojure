@@ -1,17 +1,12 @@
 # redis-clojure
 
-This is work in progress for a new version of redis-clojure targeting Clojure 1.2.
-
-New/fixed in this version is:
+This is a new version of redis-clojure targeting Clojure 1.3. It is
+forked from nathell/redis-clojure's 1.2 branch which included:
 
 * Connection pooling
 * Binary-safe strings (using multi bulk commands)
 * Better performance
 * Support for pipelining using the `pipeline` macro
-
-Planned features:
-
-* Sharding
 
 redis-clojure is a Clojure client library for the
 [Redis](http://code.google.com/p/redis) key value (and more!) storage
