@@ -1,6 +1,7 @@
 (ns redis.protocol
   (:refer-clojure :exclude [read read-line send])
   (:import [java.net Socket]
+           [java.nio ByteBuffer]
            [java.io InputStream
                     OutputStream
                     BufferedInputStream
@@ -174,9 +175,13 @@ Stream"
     (= (class obj) byte-array-class)))
 
 (defn- write-bulk [buf bulk]
-  (let [data (cond (bytes? bulk) bulk
-                   (= (class bulk) java.nio.ByteBuffer) (.getBytes bulk)
-                   true (.getBytes (str bulk) *string-charset*))
+  (let [#^bytes data (cond (bytes? bulk) bulk
+                           ;; @@TR I think the following might be
+                           ;; wrong, but the original definitely was
+                           ;; as getBytes is not a method on
+                           ;; ByteBuffer
+                           (= (class bulk) java.nio.ByteBuffer) (.get #^ByteBuffer bulk)
+                           true (.getBytes (str bulk) *string-charset*))
         len (alength data)]
     (put-byte buf bulk-length-marker)
     (put-bytes buf (to-ascii len))
