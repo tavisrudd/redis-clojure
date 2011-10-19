@@ -91,8 +91,8 @@
   (lrem        [key count value])
   (lpop        [key])
   (rpop        [key])
+  (blpop       [key timeout])
   ; TODO:
-  ; blpop
   ; brpop
   (rpoplpush   [srckey destkey])
   ; Set commands

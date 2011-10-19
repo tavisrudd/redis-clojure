@@ -278,7 +278,12 @@
   (is (= "three" (redis/rpop "list")))
   (is (= 2 (redis/llen "list"))))
 
-(deftest blpop)
+; TODO test to see if this waits properly
+(deftest blpop
+(is (thrown? Exception (redis/blpop "foo" 1)))
+(is (= nil (redis/blpop "newlist" 1)))
+(is (= ["list" "one"] (redis/blpop "list" 1)))
+(is (= 2 (redis/llen "list"))))
 
 (deftest brpop)
 
