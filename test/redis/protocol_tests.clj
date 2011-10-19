@@ -35,7 +35,7 @@
         (is (= "*1\r\n$10\r\nnew\r\nline\0\r\n"
                (str c)))))))
 
-(defn- wrap-in-stream [s]
+(defn- wrap-in-stream [#^String s]
   (let [bytes (.getBytes s "ASCII")
         buf (ByteArrayInputStream. bytes)
         stream (BufferedInputStream. buf)]
