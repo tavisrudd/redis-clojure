@@ -7,7 +7,8 @@
 (defn server-fixture [f]
   (with-server {:host "127.0.0.1"
                       :port 6379
-                      :db 15}
+                      :db 15
+                      :password (. System getenv "REDIS_TESTPASS")}
     (redis/set "foo" "bar")
     (f)
     (redis/flushdb)))

@@ -1,5 +1,6 @@
 (ns redis.connection
   (:use [redis.protocol :only (write-to-buffer write-to-stream make-inline-command)])
+  
   (:import [java.net Socket]
            [java.io BufferedInputStream ByteArrayOutputStream]))
 
@@ -59,15 +60,19 @@
                               :timeout 5000
                               :password nil
                               :db 0})
-
+;TODO: maybe change this on the connection-alive? side instead?
 (defn make-connection [server-spec]
   (let [spec (merge default-connection-spec server-spec)
-        {:keys [host port timeout]} spec
+        {:keys [host port timeout password]} spec
         socket (Socket. #^String host #^Integer port)]
     (doto socket
       (.setTcpNoDelay true)
       (.setSoTimeout timeout))
-    (Connection. socket server-spec)))
+    (let [connection (Connection. socket server-spec)]
+      (if (nil? password)
+        connection
+        (do (send-command-and-read-reply connection (make-inline-command (str "auth " password)))
+              connection)))))
 
 (defrecord NonPooledConnectionPool []
   RedisConnectionPool
@@ -80,6 +85,4 @@
 
 (defn make-non-pooled-connection-pool []
   (NonPooledConnectionPool.))
-
-
 
