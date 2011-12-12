@@ -47,8 +47,9 @@
 
 (defcommands
   ; Connection handling
-  (quit        [] :inline )
+  (quit        [] :inline )  
   (auth        [password])
+  (config      [operation param & value])
   (ping        [] :inline)
   ; Commands operating on all types
   (exists      [key] int-to-bool)
