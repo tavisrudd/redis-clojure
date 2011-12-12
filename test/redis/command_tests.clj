@@ -8,7 +8,30 @@
    {:host "127.0.0.1"
     :port 6379
     :db 15
-    :password (. System getenv "REDIS_TESTPASS")}
+   }
+   ;; String value
+   (redis/set "foo" "bar")
+   ;; List with three items
+   (redis/rpush "list" "one")
+   (redis/rpush "list" "two")
+   (redis/rpush "list" "three")
+   ;; Set with three members
+   (redis/sadd "set" "one")
+   (redis/sadd "set" "two")
+   (redis/sadd "set" "three")
+   ;; Hash with three fields
+   (redis/hset "hash" "one" "foo")
+   (redis/hset "hash" "two" "bar")
+   (redis/hset "hash" "three" "baz")
+   (f)
+   (redis/flushdb))
+   
+  (redis/with-server
+   {:host "127.0.0.1"
+    :port 6379
+    :db 15
+    :password "testpass"
+   }
    ;; String value
    (redis/set "foo" "bar")
    ;; List with three items
@@ -638,7 +661,6 @@
 
 
 
-
 ;; ;;
 ;; ;; Persistence commands
 ;; ;;
@@ -655,6 +677,15 @@
 ;;   (let [ages-ago (new java.util.Date (long 1))]
 ;;     (is (.before ages-ago (redis/lastsave)))))
 
+;; ;;
+;; ;; Configuration commands
+;; ;;
 
-
-
+    (deftest config 
+      (let [response (redis/config "get" "timeout") 
+            timeout ((Integer/parseInt (second res)))]
+        (is (= "timeout" (first response)))
+        (is (integer? timeout))
+        (redis/config "set" "timeout" "0")
+        (is (= "0" (second (redis/config "get" "timeout"))))
+        (redis/config "set" "timeout" timeout)))
