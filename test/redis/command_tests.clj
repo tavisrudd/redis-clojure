@@ -24,13 +24,14 @@
    (redis/hset "hash" "two" "bar")
    (redis/hset "hash" "three" "baz")
    (f)
-   (redis/flushdb))
+   (redis/flushdb)
+   (redis/config "set" "requirepass" "testing"))
    
   (redis/with-server
    {:host "127.0.0.1"
     :port 6379
     :db 15
-    :password "testpass"
+    :password "testing"
    }
    ;; String value
    (redis/set "foo" "bar")
@@ -47,7 +48,9 @@
    (redis/hset "hash" "two" "bar")
    (redis/hset "hash" "three" "baz")
    (f)
-   (redis/flushdb)))
+   (redis/flushdb)
+   (redis/config "set" "requirepass" "")
+   (redis/quit)))
 
 (use-fixtures :each server-fixture)
 
@@ -683,9 +686,16 @@
 
     (deftest config 
       (let [response (redis/config "get" "timeout") 
-            timeout ((Integer/parseInt (second res)))]
+            timeout (Integer/parseInt (second response))]
         (is (= "timeout" (first response)))
         (is (integer? timeout))
         (redis/config "set" "timeout" "0")
         (is (= "0" (second (redis/config "get" "timeout"))))
         (redis/config "set" "timeout" timeout)))
+        
+    (deftest auth
+      (if-let [password (second (redis/config "get" "requirepass"))]
+        (do 
+          (is (thrown? Exception (redis/auth (str password "WRONGPASS"))))
+          (is (= "OK" (redis/auth password))))
+        (is (thrown? Exception (redis/auth "anypassword")))))
