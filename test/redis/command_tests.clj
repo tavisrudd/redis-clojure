@@ -3,6 +3,14 @@
   (:require [redis.core :as redis])
   (:use [clojure.test]))
 
+(defn- server-version []
+  (redis/with-server
+   {:host "127.0.0.1"
+    :port 6379
+    :db 15
+   }
+   (Double/parseDouble (re-find  #"[0-9]\.[0-9]" ((redis/info) "redis_version")))))
+
 (defn server-fixture [f]
   (redis/with-server
    {:host "127.0.0.1"
@@ -25,9 +33,17 @@
    (redis/hset "hash" "three" "baz")
    (f)
    (redis/flushdb)
-   (redis/config "set" "requirepass" "testing"))
-   
-  (redis/with-server
+   )
+   ;only test password change if the server supports password unset
+   (if (>= (server-version) 2.4) 
+   (do 
+   (redis/with-server 
+   {:host "127.0.0.1"
+    :port 6379
+    :db 15
+   }
+   (redis/config "set" "requirepass" "testing"))  
+   (redis/with-server
    {:host "127.0.0.1"
     :port 6379
     :db 15
@@ -50,7 +66,7 @@
    (f)
    (redis/flushdb)
    (redis/config "set" "requirepass" "")
-   (redis/quit)))
+   (redis/quit)))))
 
 (use-fixtures :each server-fixture)
 
@@ -698,4 +714,6 @@
         (do 
           (is (thrown? Exception (redis/auth (str password "WRONGPASS"))))
           (is (= "OK" (redis/auth password))))
-        (is (thrown? Exception (redis/auth "anypassword")))))
+        (if (>= (server-version) 2.4) 
+          (is (thrown? Exception (redis/auth "anypassword")))
+          (is (= "OK" (redis/auth "anypassword"))))))

@@ -44,12 +44,15 @@
 (defn- string-to-double [s] (when s (Double/parseDouble s)))
 (defn- seq-to-set [seq] (when seq (clojure.core/set seq)))
 (defn- seq-to-map [seq] (when seq (apply hash-map seq)))
+(defn- crlf-to-hash [s] (apply hash-map (clojure.string/split s (re-pattern ":|\\r\\n"))))
 
 (defcommands
-  ; Connection handling
+  ;Server commands
+  (config      [operation param & value])
+  (info        [] :inline crlf-to-hash)
+  ; Connection commands
   (quit        [] :inline )  
   (auth        [password])
-  (config      [operation param & value])
   (ping        [] :inline)
   ; Commands operating on all types
   (exists      [key] int-to-bool)
