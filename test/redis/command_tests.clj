@@ -7,7 +7,8 @@
   (redis/with-server
    {:host "127.0.0.1"
     :port 6379
-    :db 15}
+    :db 15
+    :password (. System getenv "REDIS_TESTPASS")}
    ;; String value
    (redis/set "foo" "bar")
    ;; List with three items
