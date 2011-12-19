@@ -3,12 +3,20 @@
   (:require [redis.core :as redis])
   (:use [clojure.test]))
 
+(defn- server-version []
+  (redis/with-server
+   {:host "127.0.0.1"
+    :port 6379
+    :db 15
+   }
+   (Double/parseDouble (re-find  #"[0-9]\.[0-9]" ((redis/info) "redis_version")))))
+
 (defn server-fixture [f]
   (redis/with-server
    {:host "127.0.0.1"
     :port 6379
     :db 15
-    :password (. System getenv "REDIS_TESTPASS")}
+   }
    ;; String value
    (redis/set "foo" "bar")
    ;; List with three items
@@ -24,7 +32,41 @@
    (redis/hset "hash" "two" "bar")
    (redis/hset "hash" "three" "baz")
    (f)
-   (redis/flushdb)))
+   (redis/flushdb)
+   )
+   ;only test password change if the server supports password unset
+   (if (>= (server-version) 2.4) 
+   (do 
+   (redis/with-server 
+   {:host "127.0.0.1"
+    :port 6379
+    :db 15
+   }
+   (redis/config "set" "requirepass" "testing"))  
+   (redis/with-server
+   {:host "127.0.0.1"
+    :port 6379
+    :db 15
+    :password "testing"
+   }
+   ;; String value
+   (redis/set "foo" "bar")
+   ;; List with three items
+   (redis/rpush "list" "one")
+   (redis/rpush "list" "two")
+   (redis/rpush "list" "three")
+   ;; Set with three members
+   (redis/sadd "set" "one")
+   (redis/sadd "set" "two")
+   (redis/sadd "set" "three")
+   ;; Hash with three fields
+   (redis/hset "hash" "one" "foo")
+   (redis/hset "hash" "two" "bar")
+   (redis/hset "hash" "three" "baz")
+   (f)
+   (redis/flushdb)
+   (redis/config "set" "requirepass" "")
+   (redis/quit)))))
 
 (use-fixtures :each server-fixture)
 
@@ -638,7 +680,6 @@
 
 
 
-
 ;; ;;
 ;; ;; Persistence commands
 ;; ;;
@@ -655,6 +696,24 @@
 ;;   (let [ages-ago (new java.util.Date (long 1))]
 ;;     (is (.before ages-ago (redis/lastsave)))))
 
+;; ;;
+;; ;; Configuration commands
+;; ;;
 
-
-
+    (deftest config 
+      (let [response (redis/config "get" "timeout") 
+            timeout (Integer/parseInt (second response))]
+        (is (= "timeout" (first response)))
+        (is (integer? timeout))
+        (redis/config "set" "timeout" "0")
+        (is (= "0" (second (redis/config "get" "timeout"))))
+        (redis/config "set" "timeout" timeout)))
+        
+    (deftest auth
+      (if-let [password (second (redis/config "get" "requirepass"))]
+        (do 
+          (is (thrown? Exception (redis/auth (str password "WRONGPASS"))))
+          (is (= "OK" (redis/auth password))))
+        (if (>= (server-version) 2.4) 
+          (is (thrown? Exception (redis/auth "anypassword")))
+          (is (= "OK" (redis/auth "anypassword"))))))
