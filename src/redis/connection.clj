@@ -24,11 +24,11 @@
 (defmacro with-connection [name pool server-spec & body]
   `(let [~name (get-connection ~pool ~server-spec)]
      (try
-       ~@body
+       (let [result# ~@body]
+         (release-connection ~pool ~name)
+         result#)
        (catch Exception e#
-         (throw e#))
-       (finally
-        (release-connection ~pool ~name)))))
+         (release-connection ~pool ~name e#)))))
 
 
 ;;; Implementations
