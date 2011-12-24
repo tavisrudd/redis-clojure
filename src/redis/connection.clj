@@ -28,7 +28,8 @@
          (release-connection ~pool ~name)
          result#)
        (catch Exception e#
-         (release-connection ~pool ~name e#)))))
+         (release-connection ~pool ~name e#)
+         (throw e#)))))
 
 
 ;;; Implementations
