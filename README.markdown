@@ -27,6 +27,6 @@ To run tests:
 
 Simply add it to your project.clj :dependencies list:
 
-    :dependencies [[org.clojars.tavisrudd/redis-clojure "1.3.0"] ...]
+    :dependencies [[org.clojars.tavisrudd/redis-clojure "1.3.1-SNAPSHOT"] ...]
 
 then run lein deps.
