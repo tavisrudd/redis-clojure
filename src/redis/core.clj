@@ -1,6 +1,6 @@
 (ns redis.core
   (:refer-clojure :exclude [keys type get set sort])
-  
+  (:require [deep-freeze.core :as freeze])
   ;; (:require [clojure.contrib.ns-utils :only (immigrate) :as contrib])
   (:use [redis.connection :only (with-connection make-non-pooled-connection-pool)]
         [redis.connection-pool :only (make-connection-pool)]
@@ -8,8 +8,7 @@
         [redis.vars :only (*pool* *channel*)]
         [redis.protocol :only (*return-byte-arrays?* make-multi-bulk-command)]
         [redis.defcommand :only (defcommand defcommands)]
-        
-                                        ;        [redis.commands :only (quit)]
+        ;; [redis.commands :only (quit)]
         ))
 
 
@@ -34,6 +33,14 @@
   [& body]
   `(binding [*return-byte-arrays?* true]
      ~@body))
+
+(defmacro to-clj
+  "Compress and serialize native Clojure data type to a byte array."
+  [form] `(freeze/freeze-to-array ~form))
+
+(defmacro as-clj
+  "Decompress and deserialize byte array to native Clojure data type."
+  [form] `(freeze/thaw-from-array (as-bytes ~form)))
 
 
 ;;; Command definitions

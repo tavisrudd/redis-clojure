@@ -1,5 +1,5 @@
 (ns benchmarks.clojure
-    (:require redis))
+    (:require [redis.core :as redis]))
 
 (defstruct benchmark-options
   :host
@@ -70,7 +70,7 @@
                          :host "127.0.0.1"
                          :port 6379
                          :db 15
-                         :clients 2
+                         :clients 20
                          :requests 10000))
 
 (defn create-clients [options]
@@ -166,8 +166,8 @@
      (map #(run-and-report % *default-options*) benchmarks))))
 
 
-;(run-all-benchmarks)
+;;(report-result (run-all-benchmarks 'benchmarks.clojure))
 
-;(report-result (run-benchmark ping-benchmark *default-options*))
-;(run-benchmark get-benchmark *default-options*)
+;;(report-result (run-benchmark ping-benchmark *default-options*))
+;;(run-benchmark get-benchmark *default-options*)
 
