@@ -1,6 +1,5 @@
 (ns redis.connection
   (:use [redis.protocol :only (write-to-buffer write-to-stream make-inline-command)])
-  
   (:import [java.net Socket]
            [java.io BufferedInputStream ByteArrayOutputStream]))
 
@@ -24,7 +23,7 @@
 (defmacro with-connection [name pool server-spec & body]
   `(let [~name (get-connection ~pool ~server-spec)]
      (try
-       (let [result# ~@body]
+       (let [result# (do ~@body)]
          (release-connection ~pool ~name)
          result#)
        (catch Exception e#
