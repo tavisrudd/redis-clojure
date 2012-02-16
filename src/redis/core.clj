@@ -1,6 +1,6 @@
 (ns redis.core
   (:refer-clojure :exclude [keys type get set sort])
-  
+
   ;; (:require [clojure.contrib.ns-utils :only (immigrate) :as contrib])
   (:use [redis.connection :only (with-connection make-non-pooled-connection-pool)]
         [redis.connection-pool :only (make-connection-pool)]
@@ -8,7 +8,7 @@
         [redis.vars :only (*pool* *channel*)]
         [redis.protocol :only (*return-byte-arrays?* make-multi-bulk-command)]
         [redis.defcommand :only (defcommand defcommands)]
-        
+
                                         ;        [redis.commands :only (quit)]
         ))
 
@@ -51,7 +51,7 @@
   (config      [operation param & value])
   (info        [] :inline crlf-to-hash)
   ; Connection commands
-  (quit        [] :inline )  
+  (quit        [] :inline )
   (auth        [password])
   (ping        [] :inline)
   ; Commands operating on all types
@@ -96,9 +96,9 @@
   (lpop        [key])
   (rpop        [key])
   (blpop       [key timeout])
-  ; TODO:
-  ; brpop
+  (brpop       [key timeout])
   (rpoplpush   [srckey destkey])
+  (brpoplpush   [srckey destkey timeout])
   ; Set commands
   (sadd        [key member] int-to-bool)
   (srem        [key member] int-to-bool)
@@ -156,12 +156,12 @@
   "Execute all redis commands in body atomically, ie. sandwiched in a
   MULTI/EXEC statement. If an exception is thrown the EXEC command
   will be terminated by a DISCARD, no operations will be performed and
-  the exception will be rethrown." 
+  the exception will be rethrown."
   [& body]
-  `(do 
-     (multi) 
+  `(do
+     (multi)
      (try
-      (do 
+      (do
         ~@body
         (exec))
       (catch Exception e#
@@ -191,7 +191,7 @@
             :desc  (recur (conj bulks "DESC") args)
             (throw (Exception. (str "Error parsing arguments to SORT command: Unknown argument: " type))))))))
 
-(defcommand sort [key & args] 
+(defcommand sort [key & args]
   (with-meta
     (apply make-multi-bulk-command "SORT" key (parse-sort-args args))
     {:redis-keys [key]}))
