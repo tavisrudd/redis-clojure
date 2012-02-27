@@ -63,16 +63,20 @@
 ;TODO: maybe change this on the connection-alive? side instead?
 (defn make-connection [server-spec]
   (let [spec (merge default-connection-spec server-spec)
-        {:keys [host port timeout password]} spec
+        {:keys [host port timeout password db]} spec
         socket (Socket. #^String host #^Integer port)]
     (doto socket
       (.setTcpNoDelay true)
       (.setSoTimeout timeout))
     (let [connection (Connection. socket server-spec)]
-      (if (nil? password)
-        connection
-        (do (send-command-and-read-reply connection (make-inline-command (str "auth " password)))
-              connection)))))
+      (if-not (nil? password)
+        (send-command-and-read-reply connection (make-inline-command (str "auth " password))))
+      (if-not (nil? db)
+        (let [resp (send-command-and-read-reply connection
+                                           (make-inline-command (str "SELECT " db)))]
+          (if-not (= "OK" resp)
+            (throw (Exception. (str "Error while selecting db, invalid response: " resp))))))
+      connection)))
 
 (defrecord NonPooledConnectionPool []
   RedisConnectionPool
