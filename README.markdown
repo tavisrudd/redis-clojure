@@ -1,13 +1,15 @@
 # redis-clojure
 
-This is a new version of redis-clojure targeting both Clojure 1.2 and 1.3.
+redis-clojure is the oldest of several Clojure client libraries for
+[Redis](http://redis.io). If you are currently trying to choose which
+of these client libraries to use, I (tavisrudd) recommend using
+[Carmine](https://github.com/ptaoussanis/carmine) instead. It has
+better documentation, better connection pooling, support for newer
+features of Redis 2.0+, Leiningen 2.0 support, more flexible
+serialization, and is faster.
 
-redis-clojure is a Clojure client library for the
-[Redis](http://code.google.com/p/redis) key value (and more!) storage
-system.
-
-The goal of redis-clojure is to provide a low level interface to all
-Redis commands in a Clojure idiomatic way, when possible.
+If you are currently using redis-clojure and would like to add support
+for new Redis commands, patches are welcome.
 
 ## Building 
 

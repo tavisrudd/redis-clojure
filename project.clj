@@ -1,5 +1,5 @@
-(defproject org.clojars.tavisrudd/redis-clojure "1.3.1"
-  :description "A client library for Redis"
+(defproject org.clojars.tavisrudd/redis-clojure "1.3.2"
+  :description "An older client lib for Redis. Use Carmine for new projects."
   :url "http://github.com/tavisrudd/redis-clojure"
   :dependencies [
                  [org.clojure/clojure "1.3.0"]
